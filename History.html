@@ -1,0 +1,121 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Performances - WinWin VIP</title>
+    <link rel="stylesheet" href="style.css">
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+</head>
+<body>
+    <div class="dashboard-container">
+        <nav class="dashboard-nav">
+            <div class="logo">
+                <div class="logo-svg">
+                    <svg width="32" height="32" viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg">
+                        <path d="M50 10 L60 35 L85 35 L65 55 L75 80 L50 65 L25 80 L35 55 L15 35 L40 35 L50 10Z" fill="#FFD700" stroke="#B8860B" stroke-width="2"/>
+                        <circle cx="50" cy="45" r="8" fill="#0a0a0a" stroke="#FFD700" stroke-width="2"/>
+                        <text x="50" y="52" text-anchor="middle" fill="#FFD700" font-size="10" font-weight="bold" font-family="Arial">W</text>
+                    </svg>
+                </div>
+                <span>WINWIN VIP</span>
+            </div>
+            <div class="nav-links">
+                <a href="dashboard.html" class="nav-link">Dashboard</a>
+                <a href="history.html" class="nav-link" style="color:#ffd700;">Performances</a>
+                <button onclick="logout()" class="nav-btn" style="background:#333;color:#fff;">Déconnexion</button>
+            </div>
+        </nav>
+        
+        <div class="dashboard-content">
+            <h2>📊 Historique des performances</h2>
+            <div style="margin: 1rem 0; display: flex; gap: 1rem;">
+                <div style="background: #1a1a1a; padding: 1rem; border-radius: 15px; flex: 1; text-align: center;">
+                    <div style="color: #00ff00; font-size: 2rem;" id="won-count">0</div>
+                    <div>Pronostics gagnés</div>
+                </div>
+                <div style="background: #1a1a1a; padding: 1rem; border-radius: 15px; flex: 1; text-align: center;">
+                    <div style="color: #ff4444; font-size: 2rem;" id="lost-count">0</div>
+                    <div>Pronostics perdus</div>
+                </div>
+                <div style="background: #1a1a1a; padding: 1rem; border-radius: 15px; flex: 1; text-align: center;">
+                    <div style="color: #ffd700; font-size: 2rem;" id="win-rate-history">0%</div>
+                    <div>Taux de réussite</div>
+                </div>
+            </div>
+            
+            <h3>📋 Détail des pronostics</h3>
+            <div id="history-container"></div>
+        </div>
+    </div>
+
+    <script>
+        const SUPABASE_URL = 'https://cnrxagnzlqytepgucten.supabase.co';
+        const SUPABASE_ANON_KEY = 'sb_publishable_XsBk2IPOP8vQVR39omeFkQ_-JW6bVov';
+        
+        const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+        
+        async function checkAuth() {
+            const { data: { session }, error } = await supabase.auth.getSession();
+            if (!session) {
+                window.location.href = 'login.html';
+                return null;
+            }
+            return session;
+        }
+        
+        async function loadHistory() {
+            const { data: history, error } = await supabase
+                .from('user_bets')
+                .select('*, tickets(*)')
+                .order('created_at', { ascending: false });
+            
+            if (error) {
+                console.error(error);
+                return;
+            }
+            
+            // Simuler des données pour la démo
+            const demoData = [
+                { result: 'won', ticket: { match_name: 'Manchester City vs Real Madrid', prediction: 'City gagne' } },
+                { result: 'won', ticket: { match_name: 'PSG vs Bayern', prediction: '+2.5 buts' } },
+                { result: 'lost', ticket: { match_name: 'Barca vs Atletico', prediction: 'Barca gagne' } },
+                { result: 'won', ticket: { match_name: 'Inter vs Juve', prediction: 'BTTS' } }
+            ];
+            
+            const won = demoData.filter(b => b.result === 'won').length;
+            const lost = demoData.filter(b => b.result === 'lost').length;
+            const winRate = won + lost > 0 ? Math.round((won / (won + lost)) * 100) : 0;
+            
+            document.getElementById('won-count').textContent = won;
+            document.getElementById('lost-count').textContent = lost;
+            document.getElementById('win-rate-history').textContent = winRate + '%';
+            
+            const container = document.getElementById('history-container');
+            container.innerHTML = demoData.map(bet => `
+                <div class="ticket-card" style="border-left-color: ${bet.result === 'won' ? '#00ff00' : '#ff4444'}">
+                    <h3>${bet.ticket.match_name}</h3>
+                    <p>Pronostic: ${bet.ticket.prediction}</p>
+                    <div style="margin-top: 0.5rem;">
+                        <span style="background: ${bet.result === 'won' ? '#00ff00' : '#ff4444'}; color: #000; padding: 0.2rem 0.8rem; border-radius: 20px; font-size: 0.8rem;">
+                            ${bet.result === 'won' ? '✅ Gagné' : '❌ Perdu'}
+                        </span>
+                    </div>
+                </div>
+            `).join('');
+        }
+        
+        async function logout() {
+            await supabase.auth.signOut();
+            window.location.href = 'login.html';
+        }
+        
+        async function init() {
+            await checkAuth();
+            await loadHistory();
+        }
+        
+        init();
+    </script>
+</body>
+</html>
