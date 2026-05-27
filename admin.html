@@ -1,0 +1,115 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Admin - WinWin VIP</title>
+    <link rel="stylesheet" href="style.css">
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+</head>
+<body>
+    <div class="dashboard-container">
+        <nav class="dashboard-nav">
+            <div class="logo">
+                <div class="crown">👑</div>
+                <span>WINWIN VIP - ADMIN</span>
+            </div>
+            <button onclick="logout()" class="nav-btn" style="background: #333; color: #fff;">Déconnexion</button>
+        </nav>
+        
+        <div class="dashboard-content">
+            <h2>💰 Paiements en attente</h2>
+            <div class="admin-table">
+                </table>
+                    <thead>
+                        <tr><th>ID</th><th>Utilisateur</th><th>Montant</th><th>Type</th><th>Statut</th><th>Réf transaction</th><th>Action</th></tr>
+                    </thead>
+                    <tbody id="payments-table-body">
+                        <tr><td colspan="7">Chargement...</td></tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const SUPABASE_URL = 'https://cnrxagnzlqytepgucten.supabase.co';
+        const SUPABASE_ANON_KEY = 'sb_publishable_XsBk2IPOP8vQVR39omeFkQ_-JW6bVov';
+        
+        const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+        
+        async function checkAdmin() {
+            const { data: { session }, error } = await supabase.auth.getSession();
+            if (!session) {
+                window.location.href = 'login.html';
+                return null;
+            }
+            if (session.user.email !== 'admin@winwinvip.com') {
+                document.body.innerHTML = '<div style="text-align:center;padding:2rem">⛔ Accès refusé. Zone admin uniquement.</div>';
+                return null;
+            }
+            return session;
+        }
+        
+        async function loadPayments() {
+            const { data: payments, error } = await supabase
+                .from('payments')
+                .select('*')
+                .order('id', { ascending: false });
+            
+            if (error) {
+                document.getElementById('payments-table-body').innerHTML = `<tr><td colspan="7">Erreur: ${error.message}</td></tr>`;
+                return;
+            }
+            
+            const tbody = document.getElementById('payments-table-body');
+            if (payments.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="7">Aucun paiement pour le moment</td></tr>';
+                return;
+            }
+            
+            tbody.innerHTML = payments.map(payment => `
+                <tr>
+                    <td>${payment.id}</td>
+                    <td>${payment.user_id?.substring(0,8)}...</td>
+                    <td>${payment.amount} FCFA</td>
+                    <td>${payment.subscription_type}</td>
+                    <td>${payment.status === 'pending' ? '⏳ En attente' : '✅ Validé'}</td>
+                    <td>${payment.transaction_ref || '-'}</td>
+                    <td>
+                        ${payment.status === 'pending' ? 
+                            `<button class="approve-btn" onclick="approvePayment(${payment.id})">Valider</button>` : 
+                            '✅ Fait'}
+                    </td>
+                </tr>
+            `).join('');
+        }
+        
+        async function approvePayment(paymentId) {
+            const { error } = await supabase
+                .from('payments')
+                .update({ status: 'approved' })
+                .eq('id', paymentId);
+            
+            if (error) {
+                alert('Erreur: ' + error.message);
+            } else {
+                alert('✅ Paiement validé !');
+                loadPayments();
+            }
+        }
+        
+        async function logout() {
+            await supabase.auth.signOut();
+            window.location.href = 'login.html';
+        }
+        
+        async function init() {
+            await checkAdmin();
+            await loadPayments();
+        }
+        
+        init();
+    </script>
+</body>
+</html>
