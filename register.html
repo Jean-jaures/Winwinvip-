@@ -1,0 +1,77 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Inscription - WinWin VIP</title>
+    <link rel="stylesheet" href="style.css">
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+</head>
+<body>
+    <div class="auth-container">
+        <div class="auth-card">
+            <h2>👑 Inscription VIP</h2>
+            <div id="message" class="message"></div>
+            <input type="email" id="email" placeholder="Email">
+            <input type="tel" id="phone" placeholder="Téléphone (Mobile Money)">
+            <input type="password" id="password" placeholder="Mot de passe">
+            <button onclick="register()">S'inscrire</button>
+            <div class="auth-footer">
+                Déjà membre ? <a href="login.html">Se connecter</a>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const SUPABASE_URL = 'https://cnrxagnzlqytepgucten.supabase.co';
+        const SUPABASE_ANON_KEY = 'sb_publishable_XsBk2IPOP8vQVR39omeFkQ_-JW6bVov';
+        
+        const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+        
+        async function register() {
+            const email = document.getElementById('email').value;
+            const phone = document.getElementById('phone').value;
+            const password = document.getElementById('password').value;
+            const messageDiv = document.getElementById('message');
+            
+            if (!email || !phone || !password) {
+                messageDiv.textContent = 'Veuillez remplir tous les champs';
+                messageDiv.className = 'message error';
+                return;
+            }
+            
+            const { data, error } = await supabase.auth.signUp({
+                email: email,
+                password: password,
+                options: {
+                    data: {
+                        phone: phone
+                    }
+                }
+            });
+            
+            if (error) {
+                messageDiv.textContent = error.message;
+                messageDiv.className = 'message error';
+            } else {
+                messageDiv.textContent = 'Inscription réussie ! Vérifie ton email. Redirection...';
+                messageDiv.className = 'message success';
+                
+                if (data.user) {
+                    await supabase
+                        .from('profiles')
+                        .insert({
+                            id: data.user.id,
+                            email: email,
+                            phone: phone
+                        });
+                }
+                
+                setTimeout(() => {
+                    window.location.href = 'login.html';
+                }, 2000);
+            }
+        }
+    </script>
+</body>
+</html>
