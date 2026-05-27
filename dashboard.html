@@ -1,0 +1,125 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dashboard - WinWin VIP</title>
+    <link rel="stylesheet" href="style.css">
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+</head>
+<body>
+    <div class="dashboard-container">
+        <nav class="dashboard-nav">
+            <div class="logo">
+                <div class="crown">👑</div>
+                <span>WINWIN VIP</span>
+            </div>
+            <div class="nav-links">
+                <span id="user-email" style="color: #ffd700;"></span>
+                <button onclick="logout()" class="nav-btn" style="background: #333; color: #fff;">Déconnexion</button>
+            </div>
+        </nav>
+        
+        <div class="dashboard-content">
+            <div class="stats-grid">
+                <div class="stat-card">
+                    <div class="number" id="win-rate">92%</div>
+                    <div>Taux de réussite</div>
+                </div>
+                <div class="stat-card">
+                    <div class="number" id="total-gains">0</div>
+                    <div>FCFA gagnés</div>
+                </div>
+                <div class="stat-card">
+                    <div class="number" id="tickets-bought">0</div>
+                    <div>Tickets achetés</div>
+                </div>
+            </div>
+            
+            <h2>🎯 Ticket VIP du jour</h2>
+            <div id="tickets-container"></div>
+        </div>
+    </div>
+
+    <script>
+        const SUPABASE_URL = 'https://cnrxagnzlqytepgucten.supabase.co';
+        const SUPABASE_ANON_KEY = 'sb_publishable_XsBk2IPOP8vQVR39omeFkQ_-JW6bVov';
+        
+        const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+        let currentUser = null;
+        
+        async function checkAuth() {
+            const { data: { session }, error } = await supabase.auth.getSession();
+            if (!session) {
+                window.location.href = 'login.html';
+                return null;
+            }
+            currentUser = session.user;
+            document.getElementById('user-email').textContent = currentUser.email;
+            return session;
+        }
+        
+        async function loadTickets() {
+            const { data: tickets, error } = await supabase
+                .from('tickets')
+                .select('*')
+                .order('id', { ascending: false })
+                .limit(5);
+            
+            if (error) {
+                console.error(error);
+                return;
+            }
+            
+            const container = document.getElementById('tickets-container');
+            if (container && tickets) {
+                container.innerHTML = tickets.map(ticket => `
+                    <div class="ticket-card">
+                        <h3>${ticket.match_name}</h3>
+                        <p><strong>Pronostic:</strong> ${ticket.prediction}</p>
+                        <div class="ticket-odds">Cote: ${ticket.odds}</div>
+                        <p>⭐ Confiance: ${'★'.repeat(ticket.confidence)}${'☆'.repeat(5-ticket.confidence)}</p>
+                        <p>📊 ${ticket.analysis || 'Analyse disponible sur version complète'}</p>
+                        <button class="buy-btn" onclick="buyTicket(${ticket.id})">💰 Obtenir ce ticket - 1500 FCFA</button>
+                    </div>
+                `).join('');
+            }
+        }
+        
+        async function buyTicket(ticketId) {
+            if (!currentUser) return;
+            
+            const transactionRef = prompt("📲 Envoie 1500 FCFA par Mobile Money au +225 XX XX XX XXX\nPuis entre ton numéro de transaction:");
+            if (transactionRef) {
+                const { error } = await supabase
+                    .from('payments')
+                    .insert({
+                        user_id: currentUser.id,
+                        amount: 1500,
+                        subscription_type: 'ticket',
+                        transaction_ref: transactionRef,
+                        status: 'pending'
+                    });
+                
+                if (error) {
+                    alert('Erreur: ' + error.message);
+                } else {
+                    alert('✅ Paiement enregistré ! Un administrateur validera sous 24h.');
+                }
+            }
+        }
+        
+        async function logout() {
+            await supabase.auth.signOut();
+            window.location.href = 'login.html';
+        }
+        
+        async function init() {
+            await checkAuth();
+            await loadTickets();
+        }
+        
+        init();
+    </script>
+</body>
+</html>
